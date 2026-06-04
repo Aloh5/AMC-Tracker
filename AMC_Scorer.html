@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AMC Scorer">
+<title>AMC / AIME Scorer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a22;
+    --surface2: #1e2330;
+    --border: #2a3045;
+    --accent: #e8c547;
+    --accent2: #5b8cff;
+    --green: #4ecb71;
+    --red: #ff5c5c;
+    --grey: #6b7591;
+    --text: #dde2f0;
+    --text-dim: #8a93aa;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ─── HOME ─── */
+  #home {
+    background: var(--bg);
+  }
+
+  .home-header {
+    padding: 56px 24px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .home-header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 38px;
+    font-weight: 300;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    color: var(--text);
+  }
+
+  .home-header h1 span {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .home-header p {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .year-group {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .year-label {
+    padding: 10px 24px 6px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .test-list {
+    padding: 0 16px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .test-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .test-chip:hover, .test-chip:active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .test-chip .chip-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .test-chip.aime .chip-dot { background: var(--accent2); }
+  .test-chip.amc .chip-dot { background: var(--accent); }
+
+  .test-chip.taken {
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .test-chip.taken .chip-dot { background: var(--green); }
+
+  /* Log tab section */
+  .bottom-nav {
+    display: flex;
+    border-top: 1px solid var(--border);
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 14px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--grey);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .nav-btn svg { width: 20px; height: 20px; }
+  .nav-btn.active { color: var(--accent); }
+
+  .scrollable { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+
+  /* ─── SETUP SCREEN ─── */
+  #setup {
+    background: var(--bg);
+  }
+
+  .setup-header {
+    padding: 24px 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .back-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+
+  .setup-title {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 400;
+  }
+
+  .setup-body {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 120px;
+  }
+
+  .setup-section h3 {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .range-row label { font-size: 13px; color: var(--text-dim); width: 60px; }
+
+  .num-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 18px;
+    padding: 10px 14px;
+    width: 80px;
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .num-input::-webkit-outer-spin-button,
+  .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .timing-options {
+    display: flex;
+    gap: 10px;
+  }
+
+  .timing-card {
+    flex: 1;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .timing-card.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,197,71,0.07);
+  }
+
+  .timing-card svg { width: 28px; height: 28px; }
+
+  .timer-config {
+    display: none;
+    margin-top: 12px;
+  }
+  .timer-config.visible { display: flex; align-items: center; gap: 10px; }
+
+  .big-btn {
+    background: var(--accent);
+    color: #0d0f14;
+    border: none;
+    border-radius: var(--radius);
+    padding: 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 500;
+    transition: opacity 0.15s;
+    margin-top: 8px;
+  }
+  .big-btn:active { opacity: 0.8; }
+
+  /* ─── EXAM SCREEN ─── */
+  #exam {
+    background: var(--bg);
+  }
+
+  .exam-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .exam-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .exam-name {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-style: italic;
+  }
+
+  .exam-range {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .timer-display {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timer-display.warning { color: var(--red); }
+
+  .finish-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .finish-btn:hover, .finish-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  /* Answer Sheet */
+  .answer-sheet {
+    padding: 16px 20px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .question-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .q-num {
+    font-size: 13px;
+    color: var(--text-dim);
+    width: 22px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* AMC buttons */
+  .choice-btns {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .choice-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .choice-btn:active { transform: scale(0.92); }
+  .choice-btn.selected {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+  }
+
+  /* AIME input */
+  .aime-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    padding: 8px 12px;
+    text-align: center;
+    letter-spacing: 3px;
+    -moz-appearance: textfield;
+    max-width: 140px;
+  }
+  .aime-input::-webkit-outer-spin-button,
+  .aime-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .aime-input:focus {
+    outline: none;
+    border-color: var(--accent2);
+  }
+  .aime-input.filled { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ─── RESULTS SCREEN ─── */
+  #results {
+    background: var(--bg);
+  }
+
+  .results-header {
+    padding: 32px 20px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .results-title {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    font-weight: 300;
+  }
+
+  .score-display {
+    margin-top: 20px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .score-card .val {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .score-card .lbl {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .score-card.highlight { border-color: var(--accent); }
+  .score-card.highlight .val { color: var(--accent); }
+
+  .results-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 80px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    margin-top: 20px;
+  }
+
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-row:last-child { border-bottom: none; }
+
+  .r-num { font-size: 12px; color: var(--text-dim); width: 22px; text-align: right; }
+
+  .r-status {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .r-status.correct { background: rgba(78,203,113,0.15); color: var(--green); }
+  .r-status.wrong { background: rgba(255,92,92,0.15); color: var(--red); }
+  .r-status.blank { background: var(--surface2); color: var(--grey); }
+
+  .r-answer { flex: 1; font-size: 13px; }
+  .r-correct { font-size: 11px; color: var(--green); }
+
+  /* Time display */
+  .time-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 12px;
+  }
+
+  /* ─── LOG SCREEN ─── */
+  #log {
+    background: var(--bg);
+  }
+
+  .log-header {
+    padding: 32px 20px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .log-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 26px;
+    font-weight: 300;
+  }
+
+  .log-entry {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .log-entry:active { background: var(--surface); }
+
+  .log-entry-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .log-test-name {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .log-score {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    color: var(--accent);
+  }
+
+  .log-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dot-g { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .dot-r { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+  .dot-gr { width: 6px; height: 6px; border-radius: 50%; background: var(--grey); }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .export-row {
+    padding: 16px 20px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .outline-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .outline-btn:hover, .outline-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 10px 20px;
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    margin: 0 20px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent2);
+    transition: width 0.3s;
+  }
+
+  input[type=number] { appearance: textfield; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════
+     HOME SCREEN
+════════════════════════════════════ -->
+<div id="home" class="screen active">
+  <div class="home-header">
+    <h1>AMC &<br><span>AIME</span> Scorer</h1>
+    <p>2015 – 2026 · 48 tests loaded</p>
+  </div>
+  <div class="scrollable" id="test-browser"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showTab('home')" id="nav-home">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z" />
+      </svg>
+      Tests
+    </button>
+    <button class="nav-btn" onclick="showTab('log')" id="nav-log">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+      </svg>
+      History
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════
+     SETUP SCREEN
+════════════════════════════════════ -->
+<div id="setup" class="screen">
+  <div class="setup-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="setup-title" id="setup-title">Test Setup</div>
+  </div>
+  <div class="setup-body">
+    <div class="setup-section">
+      <h3>Question Range</h3>
+      <div class="range-row">
+        <label>From Q</label>
+        <input type="number" class="num-input" id="q-from" value="1" min="1">
+        <span style="color:var(--text-dim)">to Q</span>
+        <input type="number" class="num-input" id="q-to" value="25" min="1">
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <h3>Timing</h3>
+      <div class="timing-options">
+        <div class="timing-card selected" id="tc-stopwatch" onclick="selectTiming('stopwatch')">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          Stopwatch
+        </div>
+        <div class="timing-card" id="tc-timer" onclick="selectTiming('timer')">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+          </svg>
+          Timer
+        </div>
+      </div>
+      <div class="timer-config" id="timer-config">
+        <label style="font-size:13px;color:var(--text-dim)">Duration (min):</label>
+        <input type="number" class="num-input" id="timer-mins" value="75" min="1" max="999">
+      </div>
+    </div>
+
+    <button class="big-btn" onclick="startExam()">Start Exam →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     EXAM SCREEN
+════════════════════════════════════ -->
+<div id="exam" class="screen">
+  <div class="exam-topbar">
+    <div class="exam-info">
+      <div class="exam-name" id="exam-name">—</div>
+      <div class="exam-range" id="exam-range">—</div>
+    </div>
+    <div class="timer-display" id="timer-display">00:00</div>
+    <button class="finish-btn" onclick="confirmFinish()">Finish</button>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="answer-sheet" id="answer-sheet"></div>
+</div>
+
+<!-- ═══════════════════════════════════
+     RESULTS SCREEN
+════════════════════════════════════ -->
+<div id="results" class="screen">
+  <div class="results-header">
+    <div class="results-label">Results</div>
+    <div class="results-title" id="results-title">—</div>
+    <div class="score-display" id="score-display"></div>
+    <div class="time-pill" id="time-pill">⏱ —</div>
+  </div>
+  <div class="results-body" id="results-body"></div>
+</div>
+
+<!-- ═══════════════════════════════════
+     LOG SCREEN
+════════════════════════════════════ -->
+<div id="log" class="screen">
+  <div class="log-header">
+    <h2>History</h2>
+  </div>
+  <div class="export-row">
+    <button class="outline-btn" onclick="exportCSV()">Export CSV</button>
+    <button class="outline-btn" onclick="clearHistory()" style="color:var(--red);border-color:rgba(255,92,92,0.3)">Clear All</button>
+  </div>
+  <div id="log-list" class="scrollable"></div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="showTab('home')" id="nav-home2">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125Z" />
+      </svg>
+      Tests
+    </button>
+    <button class="nav-btn active" onclick="showTab('log')" id="nav-log2">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+      </svg>
+      History
+    </button>
+  </nav>
+</div>
+
+<script>
+// ═══════════════════════════
+// ANSWER DATABASE
+// ═══════════════════════════
+const ANSWERS = {
+  "2015 AIME I": {
+    "1": "722",
+    "2": "139",
+    "3": "307",
+    "4": "507",
+    "5": "341",
+    "6": "058",
+    "7": "539",
+    "8": "695",
+    "9": "494",
+    "10": "072",
+    "11": "108",
+    "12": "431",
+    "13": "091",
+    "14": "483",
+    "15": "053"
+  },
+  "2015 AIME II": {
+    "1": "131",
+    "2": "025",
+    "3": "476",
+    "4": "018",
+    "5": "090",
+    "6": "440",
+    "7": "161",
+    "8": "036",
+    "9": "384",
+    "10": "486",
+    "11": "023",
+    "12": "548",
+    "13": "628",
+    "14": "089",
+    "15": "129"
+  },
+  "2015 AMC 10A": {
+    "1": "C",
+    "2": "D",
+    "3": "D",
+    "4": "B",
+    "5": "E",
+    "6": "B",
+    "7": "B",
+    "8": "B",
+    "9": "D",
+    "10": "C",
+    "11": "C",
+    "12": "C",
+    "13": "C",
+    "14": "C",
+    "15": "B",
+    "16": "B",
+    "17": "D",
+    "18": "E",
+    "19": "D",
+    "20": "B",
+    "21": "C",
+    "22": "A",
+    "23": "C",
+    "24": "B",
+    "25": "A"
+  },
+  "2015 AMC 10B": {
+    "1": "C",
+    "2": "B",
+    "3": "A",
+    "4": "C",
+    "5": "B",
+    "6": "E",
+    "7": "A",
+    "8": "E",
+    "9": "B",
+    "10": "C",
+    "11": "B",
+    "12": "A",
+    "13": "E",
+    "14": "D",
+    "15": "B",
+    "16": "C",
+    "17": "B",
+    "18": "D",
+    "19": "C",
+    "20": "A",
+    "21": "D",
+    "22": "D",
+    "23": "B",
+    "24": "D",
+    "25": "B"
+  },
+  "2016 AIME I": {
+    "1": "336",
+    "2": "071",
+    "3": "810",
+    "4": "108",
+    "5": "053",
+    "6": "013",
+    "7": "103",
+    "8": "162",
+    "9": "744",
+    "10": "504",
+    "11": "109",
+    "12": "132",
+    "13": "273",
+    "14": "574",
+    "15": "270"
+  },
+  "2016 AIME II": {
+    "1": "108",
+    "2": "107",
+    "3": "265",
+    "4": "180",
+    "5": "182",
+    "6": "275",
+    "7": "840",
+    "8": "728",
+    "9": "262",
+    "10": "043",
+    "11": "749",
+    "12": "732",
+    "13": "371",
+    "14": "450",
+    "15": "863"
+  },
+  "2016 AMC 10A": {
+    "1": "B",
+    "2": "C",
+    "3": "C",
+    "4": "B",
+    "5": "D",
+    "6": "D",
+    "7": "D",
+    "8": "C",
+    "9": "D",
+    "10": "B",
+    "11": "D",
+    "12": "A",
+    "13": "B",
+    "14": "C",
+    "15": "A",
+    "16": "D",
+    "17": "A",
+    "18": "C",
+    "19": "E",
+    "20": "B",
+    "21": "D",
+    "22": "D",
+    "23": "A",
+    "24": "E",
+    "25": "A"
+  },
+  "2016 AMC 10B": {
+    "1": "D",
+    "2": "B",
+    "3": "D",
+    "4": "B",
+    "5": "D",
+    "6": "B",
+    "7": "C",
+    "8": "A",
+    "9": "C",
+    "10": "D",
+    "11": "B",
+    "12": "D",
+    "13": "D",
+    "14": "D",
+    "15": "C",
+    "16": "E",
+    "17": "D",
+    "18": "E",
+    "19": "D",
+    "20": "C",
+    "21": "B",
+    "22": "A",
+    "23": "C",
+    "24": "D",
+    "25": "A"
+  },
+  "2017 AIME I": {
+    "1": "390",
+    "2": "062",
+    "3": "069",
+    "4": "803",
+    "5": "321",
+    "6": "048",
+    "7": "564",
+    "8": "041",
+    "9": "045",
+    "10": "056",
+    "11": "360",
+    "12": "252",
+    "13": "059",
+    "14": "896",
+    "15": "145"
+  },
+  "2017 AIME II": {
+    "1": "196",
+    "2": "781",
+    "3": "409",
+    "4": "222",
+    "5": "791",
+    "6": "195",
+    "7": "501",
+    "8": "134",
+    "9": "013",
+    "10": "546",
+    "11": "544",
+    "12": "110",
+    "13": "245",
+    "14": "168",
+    "15": "682"
+  },
+  "2017 AMC 10A": {
+    "1": "C",
+    "2": "D",
+    "3": "B",
+    "4": "B",
+    "5": "C",
+    "6": "B",
+    "7": "A",
+    "8": "B",
+    "9": "C",
+    "10": "B",
+    "11": "D",
+    "12": "E",
+    "13": "D",
+    "14": "D",
+    "15": "C",
+    "16": "B",
+    "17": "D",
+    "18": "D",
+    "19": "C",
+    "20": "D",
+    "21": "D",
+    "22": "E",
+    "23": "B",
+    "24": "C",
+    "25": "A"
+  },
+  "2017 AMC 10B": {
+    "1": "B",
+    "2": "C",
+    "3": "E",
+    "4": "D",
+    "5": "D",
+    "6": "B",
+    "7": "C",
+    "8": "C",
+    "9": "D",
+    "10": "E",
+    "11": "D",
+    "12": "A",
+    "13": "C",
+    "14": "D",
+    "15": "E",
+    "16": "A",
+    "17": "B",
+    "18": "D",
+    "19": "E",
+    "20": "B",
+    "21": "D",
+    "22": "D",
+    "23": "C",
+    "24": "C",
+    "25": "E"
+  },
+  "2018 AIME I": {
+    "1": "600",
+    "2": "925",
+    "3": "157",
+    "4": "289",
+    "5": "189",
+    "6": "440",
+    "7": "052",
+    "8": "147",
+    "9": "210",
+    "10": "004",
+    "11": "195",
+    "12": "683",
+    "13": "126",
+    "14": "351",
+    "15": "059"
+  },
+  "2018 AIME II": {
+    "1": "800",
+    "2": "112",
+    "3": "371",
+    "4": "023",
+    "5": "074",
+    "6": "037",
+    "7": "020",
+    "8": "556",
+    "9": "184",
+    "10": "756",
+    "11": "461",
+    "12": "112",
+    "13": "647",
+    "14": "227",
+    "15": "185"
+  },
+  "2018 AMC 10A": {
+    "1": "B",
+    "2": "A",
+    "3": "E",
+    "4": "E",
+    "5": "D",
+    "6": "B",
+    "7": "E",
+    "8": "C",
+    "9": "E",
+    "10": "A",
+    "11": "E",
+    "12": "C",
+    "13": "D",
+    "14": "A",
+    "15": "D",
+    "16": "D",
+    "17": "C",
+    "18": "D",
+    "19": "E",
+    "20": "B",
+    "21": "E",
+    "22": "D",
+    "23": "D",
+    "24": "D",
+    "25": "D"
+  },
+  "2018 AMC 10B": {
+    "1": "A",
+    "2": "D",
+    "3": "B",
+    "4": "B",
+    "5": "D",
+    "6": "D",
+    "7": "D",
+    "8": "C",
+    "9": "D",
+    "10": "E",
+    "11": "C",
+    "12": "C",
+    "13": "C",
+    "14": "D",
+    "15": "A",
+    "16": "E",
+    "17": "B",
+    "18": "D",
+    "19": "E",
+    "20": "B",
+    "21": "C",
+    "22": "C",
+    "23": "B",
+    "24": "C",
+    "25": "C"
+  },
+  "2019 AIME I": {
+    "1": "342",
+    "2": "029",
+    "3": "120",
+    "4": "122",
+    "5": "252",
+    "6": "090",
+    "7": "880",
+    "8": "067",
+    "9": "540",
+    "10": "352",
+    "11": "020",
+    "12": "230",
+    "13": "032",
+    "14": "097",
+    "15": "065"
+  },
+  "2019 AIME II": {
+    "1": "059",
+    "2": "107",
+    "3": "096",
+    "4": "187",
+    "5": "520",
+    "6": "216",
+    "7": "715",
+    "8": "053",
+    "9": "472",
+    "10": "547",
+    "11": "011",
+    "12": "047",
+    "13": "504",
+    "14": "071",
+    "15": "574"
+  },
+  "2019 AMC 10A": {
+    "1": "C",
+    "2": "A",
+    "3": "D",
+    "4": "B",
+    "5": "D",
+    "6": "C",
+    "7": "C",
+    "8": "C",
+    "9": "B",
+    "10": "C",
+    "11": "C",
+    "12": "E",
+    "13": "D",
+    "14": "D",
+    "15": "E",
+    "16": "A",
+    "17": "D",
+    "18": "D",
+    "19": "B",
+    "20": "B",
+    "21": "D",
+    "22": "B",
+    "23": "C",
+    "24": "B",
+    "25": "D"
+  },
+  "2019 AMC 10B": {
+    "1": "D",
+    "2": "E",
+    "3": "B",
+    "4": "A",
+    "5": "E",
+    "6": "C",
+    "7": "B",
+    "8": "B",
+    "9": "A",
+    "10": "A",
+    "11": "A",
+    "12": "C",
+    "13": "A",
+    "14": "C",
+    "15": "A",
+    "16": "A",
+    "17": "C",
+    "18": "C",
+    "19": "C",
+    "20": "E",
+    "21": "B",
+    "22": "B",
+    "23": "C",
+    "24": "C",
+    "25": "C"
+  },
+  "2020 AIME I": {
+    "1": "547",
+    "2": "017",
+    "3": "621",
+    "4": "093",
+    "5": "052",
+    "6": "173",
+    "7": "081",
+    "8": "103",
+    "9": "077",
+    "10": "407",
+    "11": "510",
+    "12": "270",
+    "13": "036",
+    "14": "085",
+    "15": "058"
+  },
+  "2020 AIME II": {
+    "1": "231",
+    "2": "171",
+    "3": "103",
+    "4": "108",
+    "5": "151",
+    "6": "626",
+    "7": "298",
+    "8": "101",
+    "9": "090",
+    "10": "239",
+    "11": "071",
+    "12": "248",
+    "13": "060",
+    "14": "010",
+    "15": "717"
+  },
+  "2020 AMC 10A": {
+    "1": "E",
+    "2": "C",
+    "3": "A",
+    "4": "E",
+    "5": "C",
+    "6": "B",
+    "7": "C",
+    "8": "B",
+    "9": "B",
+    "10": "B",
+    "11": "C",
+    "12": "C",
+    "13": "B",
+    "14": "D",
+    "15": "E",
+    "16": "B",
+    "17": "E",
+    "18": "C",
+    "19": "E",
+    "20": "D",
+    "21": "C",
+    "22": "A",
+    "23": "A",
+    "24": "C",
+    "25": "A"
+  },
+  "2020 AMC 10B": {
+    "1": "D",
+    "2": "E",
+    "3": "E",
+    "4": "D",
+    "5": "B",
+    "6": "B",
+    "7": "A",
+    "8": "D",
+    "9": "D",
+    "10": "C",
+    "11": "D",
+    "12": "D",
+    "13": "B",
+    "14": "D",
+    "15": "D",
+    "16": "A",
+    "17": "C",
+    "18": "B",
+    "19": "A",
+    "20": "B",
+    "21": "B",
+    "22": "D",
+    "23": "C",
+    "24": "C",
+    "25": "A"
+  },
+  "2021 AIME I": {
+    "1": "097",
+    "2": "109",
+    "3": "050",
+    "4": "331",
+    "5": "031",
+    "6": "192",
+    "7": "063",
+    "8": "057",
+    "9": "567",
+    "10": "059",
+    "11": "301",
+    "12": "019",
+    "13": "672",
+    "14": "125",
+    "15": "285"
+  },
+  "2021 AIME II": {
+    "1": "550",
+    "2": "336",
+    "3": "080",
+    "4": "330",
+    "5": "736",
+    "6": "454",
+    "7": "145",
+    "8": "049",
+    "9": "295",
+    "10": "335",
+    "11": "258",
+    "12": "047",
+    "13": "797",
+    "14": "592",
+    "15": "258"
+  },
+  "2021 AMC 10A": {
+    "1": "D",
+    "2": "C",
+    "3": "D",
+    "4": "D",
+    "5": "B",
+    "6": "A",
+    "7": "D",
+    "8": "E",
+    "9": "D",
+    "10": "C",
+    "11": "E",
+    "12": "E",
+    "13": "C",
+    "14": "A",
+    "15": "C",
+    "16": "C",
+    "17": "D",
+    "18": "E",
+    "19": "E",
+    "20": "D",
+    "21": "C",
+    "22": "B",
+    "23": "D",
+    "24": "D",
+    "25": "E"
+  },
+  "2021 AMC 10B": {
+    "1": "D",
+    "2": "D",
+    "3": "C",
+    "4": "B",
+    "5": "B",
+    "6": "C",
+    "7": "D",
+    "8": "A",
+    "9": "D",
+    "10": "A",
+    "11": "D",
+    "12": "C",
+    "13": "B",
+    "14": "B",
+    "15": "B",
+    "16": "C",
+    "17": "C",
+    "18": "C",
+    "19": "D",
+    "20": "D",
+    "21": "A",
+    "22": "D",
+    "23": "C",
+    "24": "B",
+    "25": "E"
+  },
+  "2022 AIME I": {
+    "1": "116",
+    "2": "227",
+    "3": "242",
+    "4": "834",
+    "5": "550",
+    "6": "228",
+    "7": "289",
+    "8": "378",
+    "9": "247",
+    "10": "756",
+    "11": "150",
+    "12": "245",
+    "13": "392",
+    "14": "459",
+    "15": "033"
+  },
+  "2022 AIME II": {
+    "1": "154",
+    "2": "125",
+    "3": "021",
+    "4": "112",
+    "5": "072",
+    "6": "841",
+    "7": "192",
+    "8": "080",
+    "9": "244",
+    "10": "004",
+    "11": "180",
+    "12": "023",
+    "13": "220",
+    "14": "188",
+    "15": "140"
+  },
+  "2022 AMC 10A": {
+    "1": "D",
+    "2": "B",
+    "3": "E",
+    "4": "E",
+    "5": "C",
+    "6": "A",
+    "7": "B",
+    "8": "D",
+    "9": "D",
+    "10": "E",
+    "11": "C",
+    "12": "A",
+    "13": "C",
+    "14": "E",
+    "15": "D",
+    "16": "D",
+    "17": "D",
+    "18": "A",
+    "19": "C",
+    "20": "E",
+    "21": "B",
+    "22": "D",
+    "23": "B",
+    "24": "E",
+    "25": "B"
+  },
+  "2022 AMC 10B": {
+    "1": "A",
+    "2": "D",
+    "3": "D",
+    "4": "A",
+    "5": "B",
+    "6": "A",
+    "7": "B",
+    "8": "B",
+    "9": "D",
+    "10": "D",
+    "11": "B",
+    "12": "C",
+    "13": "E",
+    "14": "B",
+    "15": "D",
+    "16": "D",
+    "17": "C",
+    "18": "B",
+    "19": "C",
+    "20": "D",
+    "21": "E",
+    "22": "E",
+    "23": "C",
+    "24": "B",
+    "25": "A"
+  },
+  "2023 AIME I": {
+    "1": "191",
+    "2": "881",
+    "3": "607",
+    "4": "012",
+    "5": "106",
+    "6": "051",
+    "7": "049",
+    "8": "125",
+    "9": "738",
+    "10": "944",
+    "11": "235",
+    "12": "075",
+    "13": "125",
+    "14": "608",
+    "15": "349"
+  },
+  "2023 AIME II": {
+    "1": "220",
+    "2": "585",
+    "3": "250",
+    "4": "273",
+    "5": "719",
+    "6": "035",
+    "7": "928",
+    "8": "024",
+    "9": "033",
+    "10": "144",
+    "11": "081",
+    "12": "247",
+    "13": "167",
+    "14": "751",
+    "15": "363"
+  },
+  "2023 AMC 10A": {
+    "1": "E",
+    "2": "A",
+    "3": "A",
+    "4": "D",
+    "5": "E",
+    "6": "D",
+    "7": "B",
+    "8": "D",
+    "9": "E",
+    "10": "D",
+    "11": "C",
+    "12": "B",
+    "13": "C",
+    "14": "B",
+    "15": "E",
+    "16": "B",
+    "17": "A",
+    "18": "D",
+    "19": "E",
+    "20": "D",
+    "21": "D",
+    "22": "D",
+    "23": "C",
+    "24": "C",
+    "25": "A"
+  },
+  "2023 AMC 10B": {
+    "1": "C",
+    "2": "B",
+    "3": "D",
+    "4": "C",
+    "5": "A",
+    "6": "E",
+    "7": "B",
+    "8": "A",
+    "9": "B",
+    "10": "C",
+    "11": "B",
+    "12": "C",
+    "13": "B",
+    "14": "C",
+    "15": "C",
+    "16": "E",
+    "17": "D",
+    "18": "E",
+    "19": "B",
+    "20": "A",
+    "21": "E",
+    "22": "B",
+    "23": "B",
+    "24": "E",
+    "25": "B"
+  },
+  "2024 AIME I": {
+    "1": "204",
+    "2": "025",
+    "3": "809",
+    "4": "116",
+    "5": "104",
+    "6": "294",
+    "7": "540",
+    "8": "197",
+    "9": "480",
+    "10": "113",
+    "11": "371",
+    "12": "385",
+    "13": "110",
+    "14": "104",
+    "15": "721"
+  },
+  "2024 AIME II": {
+    "1": "073",
+    "2": "236",
+    "3": "045",
+    "4": "033",
+    "5": "080",
+    "6": "055",
+    "7": "699",
+    "8": "127",
+    "9": "902",
+    "10": "468",
+    "11": "601",
+    "12": "023",
+    "13": "321",
+    "14": "211",
+    "15": "315"
+  },
+  "2024 AMC 10A": {
+    "1": "A",
+    "2": "B",
+    "3": "B",
+    "4": "B",
+    "5": "D",
+    "6": "D",
+    "7": "B",
+    "8": "A",
+    "9": "B",
+    "10": "C",
+    "11": "D",
+    "12": "E",
+    "13": "C",
+    "14": "D",
+    "15": "E",
+    "16": "D",
+    "17": "E",
+    "18": "D",
+    "19": "E",
+    "20": "C",
+    "21": "C",
+    "22": "B",
+    "23": "D",
+    "24": "B",
+    "25": "C"
+  },
+  "2024 AMC 10B": {
+    "1": "B",
+    "2": "B",
+    "3": "E",
+    "4": "D",
+    "5": "B",
+    "6": "B",
+    "7": "A",
+    "8": "D",
+    "9": "A",
+    "10": "A",
+    "11": "C",
+    "12": "A",
+    "13": "B",
+    "14": "B",
+    "15": "C",
+    "16": "A",
+    "17": "D",
+    "18": "B",
+    "19": "C",
+    "20": "A",
+    "21": "C",
+    "22": "A",
+    "23": "B",
+    "24": "E",
+    "25": "E"
+  },
+  "2025 AIME I": {
+    "1": "070",
+    "2": "588",
+    "3": "016",
+    "4": "117",
+    "5": "279",
+    "6": "504",
+    "7": "821",
+    "8": "077",
+    "9": "062",
+    "10": "081",
+    "11": "259",
+    "12": "510",
+    "13": "204",
+    "14": "060",
+    "15": "735"
+  },
+  "2025 AIME II": {
+    "1": "468",
+    "2": "049",
+    "3": "082",
+    "4": "106",
+    "5": "336",
+    "6": "293",
+    "7": "237",
+    "8": "610",
+    "9": "149",
+    "10": "907",
+    "11": "113",
+    "12": "019",
+    "13": "248",
+    "14": "104",
+    "15": "240"
+  },
+  "2025 AMC 10A": {
+    "1": "E",
+    "2": "B",
+    "3": "D",
+    "4": "A",
+    "5": "E",
+    "6": "C",
+    "7": "E",
+    "8": "B",
+    "9": "C",
+    "10": "C",
+    "11": "E",
+    "12": "D",
+    "13": "D",
+    "14": "B",
+    "15": "A",
+    "16": "D",
+    "17": "E",
+    "18": "B",
+    "19": "A",
+    "20": "A",
+    "21": "C",
+    "22": "B",
+    "23": "D",
+    "24": "C",
+    "25": "A"
+  },
+  "2025 AMC 10B": {
+    "1": "B",
+    "2": "D",
+    "3": "D",
+    "4": "A",
+    "5": "C",
+    "6": "C",
+    "7": "C",
+    "8": "C",
+    "9": "C",
+    "10": "A",
+    "11": "B",
+    "12": "C",
+    "13": "A",
+    "14": "C",
+    "15": "D",
+    "16": "D",
+    "17": "B",
+    "18": "D",
+    "19": "D",
+    "20": "A",
+    "21": "C",
+    "22": "A",
+    "23": "C",
+    "24": "E",
+    "25": "B"
+  },
+  "2026 AIME I": {
+    "1": "277",
+    "2": "062",
+    "3": "079",
+    "4": "070",
+    "5": "065",
+    "6": "441",
+    "7": "396",
+    "8": "244",
+    "9": "029",
+    "10": "156",
+    "11": "896",
+    "12": "161",
+    "13": "039",
+    "14": "681",
+    "15": "083"
+  },
+  "2026 AIME II": {
+    "1": "196",
+    "2": "243",
+    "3": "503",
+    "4": "279",
+    "5": "190",
+    "6": "050",
+    "7": "754",
+    "8": "245",
+    "9": "669",
+    "10": "340",
+    "11": "132",
+    "12": "223",
+    "13": "107",
+    "14": "157",
+    "15": "393"
+  },
+  "2021 Fall AMC 10A": {
+    "1": "C",
+    "2": "E",
+    "3": "D",
+    "4": "B",
+    "5": "E",
+    "6": "B",
+    "7": "D",
+    "8": "B",
+    "9": "E",
+    "10": "B",
+    "11": "A",
+    "12": "D",
+    "13": "D",
+    "14": "D",
+    "15": "C",
+    "16": "D",
+    "17": "D",
+    "18": "C",
+    "19": "A",
+    "20": "B",
+    "21": "E",
+    "22": "B",
+    "23": "D",
+    "24": "E",
+    "25": "A"
+  },
+  "2021 Fall AMC 10B": {
+    "1": "E",
+    "2": "B",
+    "3": "E",
+    "4": "C",
+    "5": "E",
+    "6": "B",
+    "7": "C",
+    "8": "C",
+    "9": "C",
+    "10": "A",
+    "11": "B",
+    "12": "D",
+    "13": "B",
+    "14": "C",
+    "15": "D",
+    "16": "D",
+    "17": "D",
+    "18": "E",
+    "19": "A",
+    "20": "C",
+    "21": "E",
+    "22": "B",
+    "23": "D",
+    "24": "A",
+    "25": "E"
+  }
+};
+
+// ═══════════════════════════
+// STATE
+// ═══════════════════════════
+let currentTest = null;
+let currentType = null; // 'amc' or 'aime'
+let qFrom = 1, qTo = 25;
+let timingMode = 'stopwatch';
+let timerInterval = null;
+let timerSeconds = 0;
+let countdownSeconds = 0;
+let examStartTime = null;
+let userAnswers = {};
+
+// ═══════════════════════════
+// STORAGE
+// ═══════════════════════════
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('amc_history') || '[]'); }
+  catch { return []; }
+}
+function saveHistory(h) {
+  localStorage.setItem('amc_history', JSON.stringify(h));
+}
+
+// ═══════════════════════════
+// BUILD HOME
+// ═══════════════════════════
+function buildHome() {
+  const browser = document.getElementById('test-browser');
+  const history = getHistory();
+  const taken = new Set(history.map(e => e.test));
+
+  // Group by year
+  const byYear = {};
+  for (const k of Object.keys(ANSWERS)) {
+    const year = k.split(' ')[0];
+    if (!byYear[year]) byYear[year] = [];
+    byYear[year].push(k);
+  }
+
+  const years = Object.keys(byYear).sort((a,b) => b-a);
+  let html = '';
+  for (const yr of years) {
+    const tests = byYear[yr].sort();
+    const chips = tests.map(t => {
+      const isAime = t.includes('AIME');
+      const wasTaken = taken.has(t);
+      const cls = `test-chip ${isAime ? 'aime' : 'amc'}${wasTaken ? ' taken' : ''}`;
+      const label = t.replace(yr + ' ', '');
+      return `<div class="${cls}" onclick="openSetup('${t}')"><div class="chip-dot"></div>${label}</div>`;
+    }).join('');
+    html += `<div class="year-group"><div class="year-label">${yr}</div><div class="test-list">${chips}</div></div>`;
+  }
+  browser.innerHTML = html;
+}
+
+// ═══════════════════════════
+// NAVIGATION
+// ═══════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showTab(tab) {
+  if (tab === 'home') {
+    buildHome();
+    showScreen('home');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-home').classList.add('active');
+    document.getElementById('nav-home2') && document.getElementById('nav-home2').classList.add('active');
+  } else {
+    buildLog();
+    showScreen('log');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-log').classList.add('active');
+    document.getElementById('nav-log2') && document.getElementById('nav-log2').classList.add('active');
+  }
+}
+
+function goHome() {
+  stopTimer();
+  buildHome();
+  showScreen('home');
+}
+
+// ═══════════════════════════
+// SETUP
+// ═══════════════════════════
+function openSetup(testKey) {
+  currentTest = testKey;
+  currentType = testKey.includes('AIME') ? 'aime' : 'amc';
+  const qMax = currentType === 'aime' ? 15 : 25;
+
+  document.getElementById('setup-title').textContent = testKey;
+  document.getElementById('q-from').value = 1;
+  document.getElementById('q-to').value = qMax;
+  document.getElementById('q-from').max = qMax;
+  document.getElementById('q-to').max = qMax;
+  document.getElementById('timer-mins').value = currentType === 'aime' ? 15 : 75;
+
+  selectTiming('stopwatch');
+  showScreen('setup');
+}
+
+function selectTiming(mode) {
+  timingMode = mode;
+  document.getElementById('tc-stopwatch').classList.toggle('selected', mode === 'stopwatch');
+  document.getElementById('tc-timer').classList.toggle('selected', mode === 'timer');
+  document.getElementById('timer-config').classList.toggle('visible', mode === 'timer');
+}
+
+// ═══════════════════════════
+// EXAM
+// ═══════════════════════════
+function startExam() {
+  qFrom = parseInt(document.getElementById('q-from').value);
+  qTo = parseInt(document.getElementById('q-to').value);
+  const qMax = currentType === 'aime' ? 15 : 25;
+  qFrom = Math.max(1, Math.min(qFrom, qMax));
+  qTo = Math.max(qFrom, Math.min(qTo, qMax));
+
+  userAnswers = {};
+  examStartTime = Date.now();
+  timerSeconds = 0;
+
+  document.getElementById('exam-name').textContent = currentTest;
+  document.getElementById('exam-range').textContent = `Q${qFrom} – Q${qTo}`;
+
+  buildAnswerSheet();
+  showScreen('exam');
+  startTimer();
+}
+
+function buildAnswerSheet() {
+  const sheet = document.getElementById('answer-sheet');
+  let html = '';
+  for (let q = qFrom; q <= qTo; q++) {
+    if (currentType === 'amc') {
+      const btns = ['A','B','C','D','E'].map(c =>
+        `<button class="choice-btn" id="btn-${q}-${c}" onclick="selectChoice(${q},'${c}')">${c}</button>`
+      ).join('');
+      html += `<div class="question-row"><span class="q-num">${q}</span><div class="choice-btns">${btns}</div></div>`;
+    } else {
+      html += `<div class="question-row">
+        <span class="q-num">${q}</span>
+        <input type="number" class="aime-input" id="aime-${q}" placeholder="0–999"
+          min="0" max="999"
+          oninput="updateAime(${q}, this.value)"
+          onfocus="this.select()">
+      </div>`;
+    }
+  }
+  sheet.innerHTML = html;
+  updateProgress();
+}
+
+function selectChoice(q, c) {
+  if (userAnswers[q] === c) {
+    // Deselect
+    userAnswers[q] = null;
+    document.getElementById(`btn-${q}-${c}`).classList.remove('selected');
+  } else {
+    // Deselect old
+    if (userAnswers[q]) {
+      const old = document.getElementById(`btn-${q}-${userAnswers[q]}`);
+      if (old) old.classList.remove('selected');
+    }
+    userAnswers[q] = c;
+    document.getElementById(`btn-${q}-${c}`).classList.add('selected');
+  }
+  updateProgress();
+}
+
+function updateAime(q, val) {
+  const v = val.trim();
+  userAnswers[q] = v === '' ? null : v;
+  const el = document.getElementById(`aime-${q}`);
+  el.classList.toggle('filled', v !== '');
+  updateProgress();
+}
+
+function updateProgress() {
+  let answered = 0;
+  for (let q = qFrom; q <= qTo; q++) {
+    if (userAnswers[q]) answered++;
+  }
+  const total = qTo - qFrom + 1;
+  document.getElementById('progress-fill').style.width = (answered / total * 100) + '%';
+}
+
+// ═══════════════════════════
+// TIMER
+// ═══════════════════════════
+function startTimer() {
+  stopTimer();
+  if (timingMode === 'timer') {
+    countdownSeconds = parseInt(document.getElementById('timer-mins').value) * 60;
+    timerSeconds = countdownSeconds;
+  } else {
+    timerSeconds = 0;
+  }
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    if (timingMode === 'stopwatch') {
+      timerSeconds++;
+    } else {
+      timerSeconds--;
+      if (timerSeconds <= 0) {
+        timerSeconds = 0;
+        updateTimerDisplay();
+        stopTimer();
+        finishExam();
+        return;
+      }
+    }
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function updateTimerDisplay() {
+  const s = Math.abs(timerSeconds);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  const disp = document.getElementById('timer-display');
+  disp.textContent = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  disp.classList.toggle('warning', timingMode === 'timer' && timerSeconds <= 60);
+}
+
+function getElapsedSeconds() {
+  return Math.round((Date.now() - examStartTime) / 1000);
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}m ${sec}s`;
+}
+
+// ═══════════════════════════
+// FINISH
+// ═══════════════════════════
+function confirmFinish() {
+  // Count blanks
+  let blank = 0;
+  for (let q = qFrom; q <= qTo; q++) {
+    if (!userAnswers[q]) blank++;
+  }
+  if (blank > 0) {
+    const ok = confirm(`${blank} question(s) blank. Finish anyway?`);
+    if (!ok) return;
+  }
+  finishExam();
+}
+
+function finishExam() {
+  stopTimer();
+  const elapsed = getElapsedSeconds();
+  const key = ANSWERS[currentTest];
+  const total = qTo - qFrom + 1;
+  const isAime = currentType === 'aime';
+  
+  let correct = 0, wrong = 0, blank = 0;
+  const questionResults = [];
+
+  for (let q = qFrom; q <= qTo; q++) {
+    const ua = userAnswers[q];
+    const ca = key[String(q)];
+    let status;
+
+    if (!ua || ua === '') {
+      status = 'blank';
+      blank++;
+    } else if (isAime) {
+      // AIME: compare as integers, ignore leading zeros
+      const uaNum = parseInt(ua, 10);
+      const caNum = parseInt(ca, 10);
+      status = (uaNum === caNum) ? 'correct' : 'wrong';
+      if (status === 'correct') correct++; else wrong++;
+    } else {
+      status = (ua === ca) ? 'correct' : 'wrong';
+      if (status === 'correct') correct++; else wrong++;
+    }
+
+    questionResults.push({ q, userAnswer: ua || '', correctAnswer: ca, status });
+  }
+
+  // Scoring
+  let score;
+  if (isAime) {
+    score = correct; // AIME: 0-15
+  } else {
+    score = correct * 6 + blank * 1.5; // AMC: 6/1.5/0
+  }
+
+  // Save to history
+  const entry = {
+    test: currentTest,
+    date: new Date().toISOString(),
+    qFrom, qTo,
+    correct, wrong, blank,
+    score,
+    elapsed,
+    timingMode,
+    questions: questionResults,
+  };
+  const hist = getHistory();
+  hist.unshift(entry);
+  saveHistory(hist);
+
+  showResults(entry);
+}
+
+// ═══════════════════════════
+// RESULTS
+// ═══════════════════════════
+function showResults(entry) {
+  const isAime = entry.test.includes('AIME');
+  document.getElementById('results-title').textContent = entry.test;
+
+  const scoreCards = `
+    <div class="score-card highlight">
+      <div class="val">${isAime ? entry.correct : entry.score.toFixed(1)}</div>
+      <div class="lbl">${isAime ? 'Correct' : 'Score'}</div>
+    </div>
+    <div class="score-card">
+      <div class="val" style="color:var(--green)">${entry.correct}</div>
+      <div class="lbl">Right</div>
+    </div>
+    <div class="score-card">
+      <div class="val" style="color:var(--red)">${entry.wrong}</div>
+      <div class="lbl">Wrong</div>
+    </div>
+    <div class="score-card">
+      <div class="val" style="color:var(--grey)">${entry.blank}</div>
+      <div class="lbl">Blank</div>
+    </div>
+  `;
+  document.getElementById('score-display').innerHTML = scoreCards;
+  document.getElementById('time-pill').textContent = `⏱ ${formatTime(entry.elapsed)}`;
+
+  let bodyHtml = '<div class="section-title">Question Breakdown</div>';
+  for (const qr of entry.questions) {
+    const icon = qr.status === 'correct' ? '✓' : qr.status === 'wrong' ? '✗' : '–';
+    const correctNote = qr.status !== 'correct' ? `<span class="r-correct">→ ${qr.correctAnswer}</span>` : '';
+    bodyHtml += `
+      <div class="result-row">
+        <span class="r-num">${qr.q}</span>
+        <div class="r-status ${qr.status}">${icon}</div>
+        <div class="r-answer">${qr.userAnswer || '—'} ${correctNote}</div>
+      </div>`;
+  }
+
+  bodyHtml += `<div style="height:20px"></div>
+    <button class="big-btn" onclick="goHome()" style="max-width:100%;margin-top:0">← Back to Tests</button>`;
+
+  document.getElementById('results-body').innerHTML = bodyHtml;
+  showScreen('results');
+}
+
+// ═══════════════════════════
+// LOG
+// ═══════════════════════════
+function buildLog() {
+  const hist = getHistory();
+  const list = document.getElementById('log-list');
+
+  if (hist.length === 0) {
+    list.innerHTML = `<div class="empty-state">No tests taken yet.<br>Pick a test from the Tests tab to get started.</div>`;
+    return;
+  }
+
+  let html = '';
+  for (const e of hist) {
+    const isAime = e.test.includes('AIME');
+    const scoreLabel = isAime ? `${e.correct}/15` : e.score.toFixed(1);
+    const date = new Date(e.date).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    html += `
+      <div class="log-entry" onclick="viewLogEntry('${e.date}')">
+        <div class="log-entry-top">
+          <div class="log-test-name">${e.test}</div>
+          <div class="log-score">${scoreLabel}</div>
+        </div>
+        <div class="log-meta">
+          <span>${date}</span>
+          <span class="stat-pill"><div class="dot-g"></div> ${e.correct} right</span>
+          <span class="stat-pill"><div class="dot-r"></div> ${e.wrong} wrong</span>
+          <span class="stat-pill"><div class="dot-gr"></div> ${e.blank} blank</span>
+          <span>⏱ ${formatTime(e.elapsed)}</span>
+          ${e.qFrom !== 1 || e.qTo !== (isAime ? 15 : 25) ? `<span>Q${e.qFrom}–${e.qTo}</span>` : ''}
+        </div>
+      </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function viewLogEntry(dateStr) {
+  const hist = getHistory();
+  const entry = hist.find(e => e.date === dateStr);
+  if (entry) showResults(entry);
+}
+
+// ═══════════════════════════
+// EXPORT
+// ═══════════════════════════
+function exportCSV() {
+  const hist = getHistory();
+  if (hist.length === 0) { showToast('No data to export'); return; }
+
+  let csv = 'Date,Test,Q From,Q To,Score,Correct,Wrong,Blank,Time(s)';
+  for (const e of hist) {
+    csv += `\n${e.date},${e.test},${e.qFrom},${e.qTo},${e.score},${e.correct},${e.wrong},${e.blank},${e.elapsed}`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'amc_scores.csv';
+  a.click();
+  showToast('CSV exported!');
+}
+
+function clearHistory() {
+  if (!confirm('Clear all history? This cannot be undone.')) return;
+  localStorage.removeItem('amc_history');
+  buildLog();
+  buildHome();
+  showToast('History cleared');
+}
+
+// ═══════════════════════════
+// TOAST
+// ═══════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════
+// INIT
+// ═══════════════════════════
+buildHome();
+</script>
+</body>
+</html>
