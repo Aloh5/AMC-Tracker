@@ -131,6 +131,12 @@
   }
   .test-chip.taken .chip-dot { background: var(--green); }
 
+  .test-chip.partial {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .test-chip.partial .chip-dot { background: var(--accent); }
+
   /* Log tab section */
   .bottom-nav {
     display: flex;
@@ -727,6 +733,7 @@
     <div class="setup-title" id="setup-title">Test Setup</div>
   </div>
   <div class="setup-body">
+    <div class="setup-section" id="completed-info" style="display:none;background:rgba(232,197,71,0.08);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--accent);line-height:1.5;"></div>
     <div class="setup-section">
       <h3>Question Range</h3>
       <div class="range-row">
@@ -2023,12 +2030,44 @@ async function pullFromCloud() {
 }
 
 // ═══════════════════════════
+// COMPLETION TRACKING
+// ═══════════════════════════
+// Returns which question numbers have been attempted across ALL sessions
+// for a given test (so multiple partial mocks of the same test combine),
+// plus whether that adds up to the full test.
+function getTestCompletion(testKey) {
+  const qMax = testKey.includes('AIME') ? 15 : 25;
+  const history = getHistory();
+  const completedQs = new Set();
+  for (const e of history) {
+    if (e.test !== testKey) continue;
+    for (let q = e.qFrom; q <= e.qTo; q++) completedQs.add(q);
+  }
+  return { completedQs, qMax, isFull: completedQs.size >= qMax };
+}
+
+// Turns a Set of question numbers into a readable string like "Q1–10, Q16, Q20–22"
+function rangesToString(qSet) {
+  const nums = Array.from(qSet).sort((a, b) => a - b);
+  if (nums.length === 0) return '';
+  const ranges = [];
+  let start = nums[0], prev = nums[0];
+  for (let i = 1; i <= nums.length; i++) {
+    const n = nums[i];
+    if (n !== prev + 1) {
+      ranges.push(start === prev ? `Q${start}` : `Q${start}–${prev}`);
+      start = n;
+    }
+    prev = n;
+  }
+  return ranges.join(', ');
+}
+
+// ═══════════════════════════
 // BUILD HOME
 // ═══════════════════════════
 function buildHome() {
   const browser = document.getElementById('test-browser');
-  const history = getHistory();
-  const taken = new Set(history.map(e => e.test));
 
   // Group by year
   const byYear = {};
@@ -2044,8 +2083,10 @@ function buildHome() {
     const tests = byYear[yr].sort();
     const chips = tests.map(t => {
       const isAime = t.includes('AIME');
-      const wasTaken = taken.has(t);
-      const cls = `test-chip ${isAime ? 'aime' : 'amc'}${wasTaken ? ' taken' : ''}`;
+      const { completedQs, isFull } = getTestCompletion(t);
+      let statusCls = '';
+      if (completedQs.size > 0) statusCls = isFull ? ' taken' : ' partial';
+      const cls = `test-chip ${isAime ? 'aime' : 'amc'}${statusCls}`;
       const label = t.replace(yr + ' ', '');
       return `<div class="${cls}" onclick="openSetup('${t}')"><div class="chip-dot"></div>${label}</div>`;
     }).join('');
@@ -2098,6 +2139,16 @@ function openSetup(testKey) {
   document.getElementById('q-from').max = qMax;
   document.getElementById('q-to').max = qMax;
   document.getElementById('timer-mins').value = currentType === 'aime' ? 15 : 75;
+
+  // Show which questions are already done if this test is only partially complete
+  const { completedQs, isFull } = getTestCompletion(testKey);
+  const infoEl = document.getElementById('completed-info');
+  if (completedQs.size > 0 && !isFull) {
+    infoEl.textContent = `Already completed: ${rangesToString(completedQs)}`;
+    infoEl.style.display = 'block';
+  } else {
+    infoEl.style.display = 'none';
+  }
 
   selectTiming('stopwatch');
   showScreen('setup');
