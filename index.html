@@ -703,8 +703,8 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
       <p>2015 – 2026 · 48 tests loaded</p>
       <div style="display:flex;align-items:center;gap:10px;">
-        <span id="sync-indicator" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;">○</span>
-        <button onclick="openSyncSettings()" style="background:var(--surface);border:1px solid var(--border);color:var(--text-dim);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</button>
+        <span id="sync-indicator" style="font-size:10px;color:var(--text-dim);letter-spacing:1px;">○ Signed out</span>
+        <button onclick="openAccountModal()" style="background:var(--surface);border:1px solid var(--border);color:var(--text-dim);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⚙</button>
       </div>
     </div>
   </div>
@@ -848,7 +848,7 @@
   </div>
   <div class="export-row">
     <button class="outline-btn" onclick="exportCSV()">Export CSV</button>
-    <button class="outline-btn" onclick="pullFromCloud()">↓ Pull Cloud</button>
+    <button class="outline-btn" onclick="pullFromCloud()">↓ Refresh</button>
     <button class="outline-btn" onclick="clearHistory()" style="color:var(--red);border-color:rgba(255,92,92,0.3)">Clear</button>
   </div>
   <div id="log-list" class="scrollable"></div>
@@ -974,15 +974,7 @@ let currentTab = 'home';   // which tab to return to (home / fma / log)
 let originTab = 'home';    // which tab the setup screen was opened from
 
 // ═══════════════════════════
-// SYNC CONFIG
-// ═══════════════════════════
-let GIST_TOKEN = localStorage.getItem('gist_token') || '';
-let GIST_ID = localStorage.getItem('gist_id') || '';
-let syncStatus = 'idle'; // idle | syncing | ok | error
-let pendingSync = false;
-
-// ═══════════════════════════
-// STORAGE
+// STORAGE (local)
 // ═══════════════════════════
 function getHistory() {
   try { return JSON.parse(localStorage.getItem('amc_history') || '[]'); }
@@ -990,112 +982,8 @@ function getHistory() {
 }
 function saveHistory(h) {
   localStorage.setItem('amc_history', JSON.stringify(h));
-  if (GIST_TOKEN) syncToGist(h);
-}
-
-// ═══════════════════════════
-// GIST SYNC
-// ═══════════════════════════
-function setSyncStatus(s, msg) {
-  syncStatus = s;
-  const el = document.getElementById('sync-indicator');
-  if (!el) return;
-  const icons = { idle: '○', syncing: '↻', ok: '●', error: '✕' };
-  const colors = { idle: 'var(--text-dim)', syncing: 'var(--accent)', ok: 'var(--green)', error: 'var(--red)' };
-  el.textContent = icons[s] + (msg ? ' ' + msg : '');
-  el.style.color = colors[s];
-}
-
-async function syncToGist(history) {
-  if (!GIST_TOKEN) return;
-  setSyncStatus('syncing');
-  try {
-    const body = { files: { 'amc_scorer_data.json': { content: JSON.stringify({ history }, null, 2) } } };
-    let url, method;
-    if (GIST_ID) {
-      url = `https://api.github.com/gists/${GIST_ID}`;
-      method = 'PATCH';
-    } else {
-      url = 'https://api.github.com/gists';
-      method = 'POST';
-      body.description = 'AMC Scorer History';
-      body.public = false;
-    }
-    const res = await fetch(url, {
-      method,
-      headers: { Authorization: `token ${GIST_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    if (!GIST_ID) {
-      GIST_ID = data.id;
-      localStorage.setItem('gist_id', GIST_ID);
-    }
-    setSyncStatus('ok', 'Synced');
-    setTimeout(() => setSyncStatus('idle'), 2000);
-  } catch (e) {
-    console.error('Sync error', e);
-    setSyncStatus('error', 'Sync failed');
-  }
-}
-
-async function loadFromGist() {
-  if (!GIST_TOKEN || !GIST_ID) return false;
-  setSyncStatus('syncing', 'Loading...');
-  try {
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-      headers: { Authorization: `token ${GIST_TOKEN}` }
-    });
-    if (!res.ok) throw new Error('Failed to fetch gist');
-    const data = await res.json();
-    const content = data.files['amc_scorer_data.json']?.content;
-    if (content) {
-      const parsed = JSON.parse(content);
-      localStorage.setItem('amc_history', JSON.stringify(parsed.history || []));
-      setSyncStatus('ok', 'Loaded');
-      setTimeout(() => setSyncStatus('idle'), 2000);
-      return true;
-    }
-  } catch (e) {
-    console.error('Load error', e);
-    setSyncStatus('error', 'Load failed');
-  }
-  return false;
-}
-
-function openSyncSettings() {
-  document.getElementById('sync-modal').style.display = 'flex';
-  document.getElementById('token-input').value = GIST_TOKEN;
-  document.getElementById('gistid-input').value = GIST_ID;
-}
-
-function closeSyncSettings() {
-  document.getElementById('sync-modal').style.display = 'none';
-}
-
-async function saveSyncSettings() {
-  const tok = document.getElementById('token-input').value.trim();
-  const gid = document.getElementById('gistid-input').value.trim();
-  GIST_TOKEN = tok;
-  GIST_ID = gid;
-  localStorage.setItem('gist_token', tok);
-  localStorage.setItem('gist_id', gid);
-  closeSyncSettings();
-  if (tok && gid) {
-    const loaded = await loadFromGist();
-    if (loaded) { buildHome(); buildFmaHome(); buildLog && buildLog(); showToast('History loaded from cloud!'); }
-  } else if (tok && !gid) {
-    // New token, no gist yet — sync current history to create one
-    syncToGist(getHistory());
-    showToast('Token saved. Gist will be created on next save.');
-  }
-}
-
-async function pullFromCloud() {
-  if (!GIST_TOKEN || !GIST_ID) { showToast('Set up sync first'); return; }
-  const loaded = await loadFromGist();
-  if (loaded) { buildHome(); buildFmaHome(); buildLog(); showToast('History loaded from cloud!'); }
+  // Push to the cloud too, if signed in. Defined further down once Firebase loads.
+  if (window.pushHistoryToCloud) window.pushHistoryToCloud(h);
 }
 
 // ═══════════════════════════
@@ -1110,9 +998,6 @@ function getTestKind(testKey) {
 // ═══════════════════════════
 // COMPLETION TRACKING
 // ═══════════════════════════
-// Returns which question numbers have been attempted across ALL sessions
-// for a given test (so multiple partial mocks of the same test combine),
-// plus whether that adds up to the full test.
 function getTestCompletion(testKey) {
   const qMax = testKey.includes('AIME') ? 15 : 25;
   const history = getHistory();
@@ -1124,7 +1009,6 @@ function getTestCompletion(testKey) {
   return { completedQs, qMax, isFull: completedQs.size >= qMax };
 }
 
-// Turns a Set of question numbers into a readable string like "Q1–10, Q16, Q20–22"
 function rangesToString(qSet) {
   const nums = Array.from(qSet).sort((a, b) => a - b);
   if (nums.length === 0) return '';
@@ -1147,7 +1031,6 @@ function rangesToString(qSet) {
 function buildHome() {
   const browser = document.getElementById('test-browser');
 
-  // Group by year, excluding F=ma tests (they live on their own tab)
   const byYear = {};
   for (const k of Object.keys(ANSWERS)) {
     if (k.includes('F=ma')) continue;
@@ -1252,7 +1135,6 @@ function openSetup(testKey, fromTab) {
   document.getElementById('q-to').max = qMax;
   document.getElementById('timer-mins').value = currentType === 'aime' ? 15 : 75;
 
-  // Show which questions are already done if this test is only partially complete
   const { completedQs, isFull } = getTestCompletion(testKey);
   const infoEl = document.getElementById('completed-info');
   if (completedQs.size > 0 && !isFull) {
@@ -1320,11 +1202,9 @@ function buildAnswerSheet() {
 
 function selectChoice(q, c) {
   if (userAnswers[q] === c) {
-    // Deselect
     userAnswers[q] = null;
     document.getElementById(`btn-${q}-${c}`).classList.remove('selected');
   } else {
-    // Deselect old
     if (userAnswers[q]) {
       const old = document.getElementById(`btn-${q}-${userAnswers[q]}`);
       if (old) old.classList.remove('selected');
@@ -1408,7 +1288,6 @@ function formatTime(s) {
 // FINISH
 // ═══════════════════════════
 function confirmFinish() {
-  // Count blanks
   let blank = 0;
   for (let q = qFrom; q <= qTo; q++) {
     if (!userAnswers[q]) blank++;
@@ -1440,13 +1319,11 @@ function finishExam() {
       status = 'blank';
       blank++;
     } else if (isAime) {
-      // AIME: compare as integers, ignore leading zeros
       const uaNum = parseInt(ua, 10);
       const caNum = parseInt(ca, 10);
       status = (uaNum === caNum) ? 'correct' : 'wrong';
       if (status === 'correct') correct++; else wrong++;
     } else {
-      // AMC / F=ma: direct letter compare
       status = (ua === ca) ? 'correct' : 'wrong';
       if (status === 'correct') correct++; else wrong++;
     }
@@ -1454,17 +1331,15 @@ function finishExam() {
     questionResults.push({ q, userAnswer: ua || '', correctAnswer: ca, status });
   }
 
-  // Scoring
   let score;
   if (isAime) {
-    score = correct; // AIME: 0-15
+    score = correct;
   } else if (isFma) {
-    score = correct; // F=ma: 1 pt per correct, no guessing penalty, out of 25
+    score = correct;
   } else {
-    score = correct * 6 + blank * 1.5; // AMC: 6/1.5/0
+    score = correct * 6 + blank * 1.5;
   }
 
-  // Save to history
   const entry = {
     test: currentTest,
     date: new Date().toISOString(),
@@ -1597,6 +1472,7 @@ function exportCSV() {
 function clearHistory() {
   if (!confirm('Clear all history? This cannot be undone.')) return;
   localStorage.removeItem('amc_history');
+  if (window.pushHistoryToCloud) window.pushHistoryToCloud([]); // keep cloud in sync with the wipe
   buildLog();
   buildHome();
   buildFmaHome();
@@ -1616,38 +1492,190 @@ function showToast(msg) {
 }
 
 // ═══════════════════════════
+// ACCOUNT MODAL (UI only — Firebase logic is in the module script below)
+// ═══════════════════════════
+function openAccountModal() {
+  document.getElementById('account-modal').style.display = 'flex';
+}
+function closeAccountModal() {
+  document.getElementById('account-modal').style.display = 'none';
+}
+
+// ═══════════════════════════
 // INIT
 // ═══════════════════════════
 buildHome();
 buildFmaHome();
-// Auto-pull on load if configured
-if (GIST_TOKEN && GIST_ID) {
-  loadFromGist().then(loaded => { if (loaded) { buildHome(); buildFmaHome(); } });
-}
 </script>
 
-<!-- SYNC MODAL -->
-<div id="sync-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;padding:20px;">
+<!-- ═══════════════════════════════════
+     FIREBASE AUTH + FIRESTORE SYNC
+     Replaces the old Gist-token sync entirely.
+════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCotAqlqoGAL00tFMoD5ARUhxUS6hGyu2E",
+    authDomain: "amc-scorer.firebaseapp.com",
+    projectId: "amc-scorer",
+    storageBucket: "amc-scorer.firebasestorage.app",
+    messagingSenderId: "299919019975",
+    appId: "1:299919019975:web:3be0905665d866e03ed3e2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+  let unsubscribeSnapshot = null;
+  let applyingRemoteUpdate = false; // guards against a snapshot echo triggering its own re-push
+
+  function mergeHistories(a, b) {
+    const seen = new Set();
+    const out = [];
+    for (const e of [...a, ...b]) {
+      const key = e.date + '|' + e.test;
+      if (!seen.has(key)) { seen.add(key); out.push(e); }
+    }
+    out.sort((x, y) => new Date(y.date) - new Date(x.date));
+    return out;
+  }
+
+  function setIndicator(text, color) {
+    const el = document.getElementById('sync-indicator');
+    if (el) { el.textContent = text; el.style.color = color || 'var(--text-dim)'; }
+  }
+
+  function refreshUI() {
+    if (typeof buildHome === 'function') buildHome();
+    if (typeof buildFmaHome === 'function') buildFmaHome();
+    if (document.getElementById('log').classList.contains('active') && typeof buildLog === 'function') buildLog();
+  }
+
+  function renderAccountModalBody() {
+    const body = document.getElementById('account-modal-body');
+    if (!body) return;
+    if (currentUser) {
+      body.innerHTML = `
+        <p style="font-size:13px;color:var(--text);margin-bottom:16px;">Signed in as <strong>${currentUser.displayName || currentUser.email}</strong>. Your history syncs automatically across every device signed into this account.</p>
+        <button id="account-action-btn" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Sign Out</button>
+      `;
+      document.getElementById('account-action-btn').onclick = () => signOut(auth);
+    } else {
+      body.innerHTML = `
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">Sign in with Google to back up your history to the cloud and sync it across devices. No tokens to copy — just sign in on each device with the same account.</p>
+        <button id="account-action-btn" style="width:100%;background:var(--accent);color:#0d0f14;border:none;border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;">Sign in with Google</button>
+      `;
+      document.getElementById('account-action-btn').onclick = () => {
+        signInWithPopup(auth, new GoogleAuthProvider()).catch(err => {
+          console.error(err);
+          window.showToast && window.showToast('Sign-in failed — try again');
+        });
+      };
+    }
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    renderAccountModalBody();
+
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+
+    if (!user) {
+      setIndicator('○ Signed out');
+      return;
+    }
+
+    setIndicator('↻ Syncing…', 'var(--accent)');
+    const ref = doc(db, "users", user.uid);
+
+    try {
+      const snap = await getDoc(ref);
+      const local = JSON.parse(localStorage.getItem('amc_history') || '[]');
+
+      if (!snap.exists()) {
+        // First time this account has ever synced — push whatever is on THIS device up.
+        await setDoc(ref, { history: local });
+      } else {
+        // Merge cloud + local so a second device's progress is never silently dropped.
+        const cloud = snap.data().history || [];
+        const merged = mergeHistories(local, cloud);
+        applyingRemoteUpdate = true;
+        localStorage.setItem('amc_history', JSON.stringify(merged));
+        applyingRemoteUpdate = false;
+        await setDoc(ref, { history: merged });
+        refreshUI();
+      }
+
+      setIndicator('● Synced', 'var(--green)');
+    } catch (e) {
+      console.error('Initial sync failed', e);
+      setIndicator('✕ Sync error', 'var(--red)');
+    }
+
+    // Live updates: if another device pushes new history, pull it in here automatically.
+    unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
+      const cloudHistory = docSnap.data()?.history;
+      if (!cloudHistory) return;
+      applyingRemoteUpdate = true;
+      localStorage.setItem('amc_history', JSON.stringify(cloudHistory));
+      applyingRemoteUpdate = false;
+      refreshUI();
+    }, (err) => {
+      console.error('Snapshot listener error', err);
+      setIndicator('✕ Sync error', 'var(--red)');
+    });
+  });
+
+  // Called by saveHistory() every time a local write happens.
+  window.pushHistoryToCloud = async (history) => {
+    if (!currentUser || applyingRemoteUpdate) return;
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), { history });
+      setIndicator('● Synced', 'var(--green)');
+    } catch (e) {
+      console.error('Push failed', e);
+      setIndicator('✕ Sync error', 'var(--red)');
+    }
+  };
+
+  // Manual "Refresh" button on the History tab — re-pulls the latest cloud copy.
+  window.pullFromCloud = async () => {
+    if (!currentUser) { window.showToast && window.showToast('Sign in first'); return; }
+    setIndicator('↻ Syncing…', 'var(--accent)');
+    try {
+      const snap = await getDoc(doc(db, "users", currentUser.uid));
+      const cloudHistory = snap.exists() ? (snap.data().history || []) : [];
+      applyingRemoteUpdate = true;
+      localStorage.setItem('amc_history', JSON.stringify(cloudHistory));
+      applyingRemoteUpdate = false;
+      refreshUI();
+      setIndicator('● Synced', 'var(--green)');
+      window.showToast && window.showToast('Refreshed from cloud');
+    } catch (e) {
+      console.error(e);
+      setIndicator('✕ Sync error', 'var(--red)');
+    }
+  };
+</script>
+
+<!-- ACCOUNT MODAL -->
+<div id="account-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:420px;">
-    <h3 style="font-family:'Fraunces',serif;font-weight:300;font-size:22px;margin-bottom:6px;">Cloud Sync</h3>
-    <p style="font-size:11px;color:var(--text-dim);margin-bottom:20px;line-height:1.6;">Syncs your history to a private GitHub Gist. <a href="https://github.com/settings/tokens/new?scopes=gist&description=AMC+Scorer" target="_blank" style="color:var(--accent2);">Get a token here</a> (select only the <strong>gist</strong> scope).</p>
-
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:6px;">GitHub Token</label>
-        <input id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxx"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;">
-      </div>
-      <div>
-        <label style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:6px;">Gist ID <span style="font-weight:300;text-transform:none;">(auto-filled after first save, or paste existing)</span></label>
-        <input id="gistid-input" type="text" placeholder="Leave blank to create new"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:10px 12px;">
-      </div>
+    <h3 style="font-family:'Fraunces',serif;font-weight:300;font-size:22px;margin-bottom:6px;">Account & Sync</h3>
+    <div id="account-modal-body" style="margin-top:14px;">
+      <p style="font-size:13px;color:var(--text-dim);">Loading…</p>
     </div>
-
     <div style="display:flex;gap:10px;margin-top:20px;">
-      <button onclick="closeSyncSettings()" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
-      <button onclick="saveSyncSettings()" style="flex:2;background:var(--accent);color:#0d0f14;border:none;border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;">Save & Connect</button>
+      <button onclick="closeAccountModal()" style="flex:1;background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;">Close</button>
     </div>
   </div>
 </div>
